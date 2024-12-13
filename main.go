@@ -8,6 +8,7 @@ import (
 	"github.com/edupsousa/go-aoc-2024/day1"
 	"github.com/edupsousa/go-aoc-2024/day2"
 	"github.com/edupsousa/go-aoc-2024/day3"
+	"github.com/edupsousa/go-aoc-2024/day4"
 )
 
 func main() {
@@ -45,6 +46,8 @@ func getDaySolver(day int) SolverFunc {
 		return day2.Solver
 	case 3:
 		return day3.Solver
+	case 4:
+		return day4.Solver
 	default:
 		return func(_ *os.File) error {
 			fmt.Println("Day not implemented yet")
