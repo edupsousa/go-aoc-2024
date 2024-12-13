@@ -1,4 +1,4 @@
-package main
+package day2
 
 import (
 	"bufio"
@@ -9,35 +9,9 @@ import (
 	"strings"
 )
 
-func main() {
-	filename, err := getFilenameFromArgs()
-	if err != nil {
-		panic(err)
-	}
-	reports, err := readReportsFromFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	safeReports := countSafeReports(reports, isSafe)
-	fmt.Printf("Number of safe reports: %d\n", safeReports)
-	safeWithTolerance := countSafeReports(reports, isSafeWithTolerance)
-	fmt.Printf("Number of safe reports with tolerance: %d\n", safeWithTolerance)
-}
-
-func getFilenameFromArgs() (string, error) {
-	if len(os.Args) < 2 {
-		return "", fmt.Errorf("filename not provided")
-	}
-	filename := os.Args[1]
-	return filename, nil
-}
-
-type Level = int
-type Report []Level
-
-func parseReport(line string) (Report, error) {
+func parseReport(line string) ([]int, error) {
 	sLevels := strings.Split(line, " ")
-	var report Report
+	var report []int
 	for _, sLevel := range sLevels {
 		level, err := strconv.Atoi(sLevel)
 		if err != nil {
@@ -48,15 +22,10 @@ func parseReport(line string) (Report, error) {
 	return report, nil
 }
 
-func readReportsFromFile(filename string) ([]Report, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+func readReportsFromFile(file *os.File) ([][]int, error) {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
-	var reports []Report
+	var reports [][]int
 	for scanner.Scan() {
 		line := scanner.Text()
 		report, err := parseReport(line)
@@ -68,9 +37,9 @@ func readReportsFromFile(filename string) ([]Report, error) {
 	return reports, nil
 }
 
-type CheckSafetyFunc func(Report) bool
+type checkSafetyFunc func([]int) bool
 
-func countSafeReports(reports []Report, checkSafety CheckSafetyFunc) int {
+func countSafeReports(reports [][]int, checkSafety checkSafetyFunc) int {
 	var safeReports int
 	for _, report := range reports {
 		if checkSafety(report) {
@@ -80,7 +49,7 @@ func countSafeReports(reports []Report, checkSafety CheckSafetyFunc) int {
 	return safeReports
 }
 
-func isSafe(r Report) bool {
+func isSafe(r []int) bool {
 	if len(r) < 2 {
 		return true
 	}
@@ -97,7 +66,7 @@ func isSafe(r Report) bool {
 	return true
 }
 
-func isSafeWithTolerance(report Report) bool {
+func isSafeWithTolerance(report []int) bool {
 	if len(report) < 2 {
 		return true
 	}
@@ -105,7 +74,7 @@ func isSafeWithTolerance(report Report) bool {
 		return true
 	}
 	for i := 0; i < len(report); i++ {
-		r := make(Report, len(report))
+		r := make([]int, len(report))
 		copy(r, report)
 		r = append(r[:i], r[i+1:]...)
 		if isSafe(r) {
@@ -113,4 +82,16 @@ func isSafeWithTolerance(report Report) bool {
 		}
 	}
 	return false
+}
+
+func Solver(file *os.File) error {
+	reports, err := readReportsFromFile(file)
+	if err != nil {
+		return err
+	}
+	safeReports := countSafeReports(reports, isSafe)
+	fmt.Printf("Number of safe reports: %d\n", safeReports)
+	safeWithTolerance := countSafeReports(reports, isSafeWithTolerance)
+	fmt.Printf("Number of safe reports with tolerance: %d\n", safeWithTolerance)
+	return nil
 }
