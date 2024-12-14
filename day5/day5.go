@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -11,12 +12,43 @@ import (
 func Solver(f *os.File) error {
 	r, u := readRulesAndUpdates(f)
 	ruleList := rulesToAdjList(r)
-	fmt.Println("Rule list:", ruleList)
-	validUpd := getValidUpdates(u, ruleList)
-	fmt.Println("Valid updates:", validUpd)
-	sum := sumMiddlePages(validUpd)
-	fmt.Println("Sum of middle pages:", sum)
+	// fmt.Println("Rule list:", ruleList)
+	valid, invalid := getValidUpdates(u, ruleList)
+	// fmt.Println("Valid updates:", valid)
+	// fmt.Println("Invalid updates:", invalid)
+	reorderedInvalid := reorderInvalidUpdates(invalid, ruleList)
+	// fmt.Println("Reordered invalid updates:", reorderedInvalid)
+	sumValid := sumMiddlePages(valid)
+	fmt.Println("Middle page sum for valid updates:", sumValid)
+	sumReordered := sumMiddlePages(reorderedInvalid)
+	fmt.Println("Middle page sum for reordered invalid updates:", sumReordered)
 	return nil
+}
+
+type ruleAdjList = map[string]map[string]bool
+
+type sortableUpdate struct {
+	update []string
+	rules  ruleAdjList
+}
+
+func (su sortableUpdate) Len() int {
+	return len(su.update)
+}
+
+func (su sortableUpdate) Swap(i, j int) {
+	su.update[i], su.update[j] = su.update[j], su.update[i]
+}
+
+func (su sortableUpdate) Less(i, j int) bool {
+	return su.rules[su.update[i]][su.update[j]]
+}
+
+func reorderInvalidUpdates(updates [][]string, rules ruleAdjList) [][]string {
+	for _, update := range updates {
+		sort.Sort(sortableUpdate{update, rules})
+	}
+	return updates
 }
 
 func readRulesAndUpdates(f *os.File) ([]string, [][]string) {
@@ -40,11 +72,8 @@ func readRulesAndUpdates(f *os.File) ([]string, [][]string) {
 	return rules, updates
 }
 
-type PageSet = map[string]bool
-type RuleAdjList = map[string]map[string]bool
-
-func rulesToAdjList(rules []string) RuleAdjList {
-	adjList := make(RuleAdjList)
+func rulesToAdjList(rules []string) ruleAdjList {
+	adjList := make(ruleAdjList)
 	for _, r := range rules {
 		rParts := strings.Split(r, "|")
 		page := rParts[0]
@@ -56,17 +85,20 @@ func rulesToAdjList(rules []string) RuleAdjList {
 	return adjList
 }
 
-func getValidUpdates(updates [][]string, rules RuleAdjList) [][]string {
-	var validUpdates [][]string
+func getValidUpdates(updates [][]string, rules ruleAdjList) ([][]string, [][]string) {
+	var valid [][]string
+	var invalid [][]string
 	for _, u := range updates {
 		if isValidUpdate(u, rules) {
-			validUpdates = append(validUpdates, u)
+			valid = append(valid, u)
+		} else {
+			invalid = append(invalid, u)
 		}
 	}
-	return validUpdates
+	return valid, invalid
 }
 
-func isValidUpdate(update []string, rules RuleAdjList) bool {
+func isValidUpdate(update []string, rules ruleAdjList) bool {
 	seen := make(map[string]bool)
 	for _, page := range update {
 		seen[page] = true
