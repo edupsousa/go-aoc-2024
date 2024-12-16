@@ -39,18 +39,18 @@ func (ts tileStatus) String() string {
 	if ts == obstacleTile {
 		return "#"
 	}
-	if ts == upTile {
-		return "^"
-	}
-	if ts == rightTile {
-		return ">"
-	}
-	if ts == downTile {
-		return "v"
-	}
-	if ts == leftTile {
-		return "<"
-	}
+	// if ts == upTile {
+	// 	return "^"
+	// }
+	// if ts == rightTile {
+	// 	return ">"
+	// }
+	// if ts == downTile {
+	// 	return "v"
+	// }
+	// if ts == leftTile {
+	// 	return "<"
+	// }
 	if (ts&upTile == upTile || ts&downTile == downTile) && (ts&rightTile == rightTile || ts&leftTile == leftTile) {
 		return "+"
 	}
@@ -74,6 +74,13 @@ func (ts *tileStatus) setMovement(d direction) {
 	case left:
 		*ts |= leftTile
 	}
+}
+
+func (ts tileStatus) hasMovement(d direction) bool {
+	return (d == up && ts&upTile == upTile) ||
+		(d == right && ts&rightTile == rightTile) ||
+		(d == down && ts&downTile == downTile) ||
+		(d == left && ts&leftTile == leftTile)
 }
 
 func (ts *tileStatus) setObstacle() {
@@ -102,6 +109,10 @@ func (tm tileMap) isInBounds(p position) bool {
 
 func (tm *tileMap) setMovement(p position, d direction) {
 	(*tm)[p.y][p.x].setMovement(d)
+}
+
+func (tm tileMap) hasMovement(p position, d direction) bool {
+	return tm[p.y][p.x].hasMovement(d)
 }
 
 func (tm *tileMap) setObstacle(p position) {
@@ -157,11 +168,23 @@ type game struct {
 	guard player
 }
 
-func (g *game) moveGuard() bool {
+type movementResult uint8
+
+const (
+	movementOk movementResult = iota
+	movementOutOfBounds
+	movementLoop
+)
+
+func (g *game) moveGuard() movementResult {
 	newPos := g.guard.pos.move(g.guard.dir)
-	fmt.Printf("Moving guard from %v to %v\n", g.guard.pos, newPos)
+	// fmt.Printf("Moving guard from %v to %v\n", g.guard.pos, newPos)
 	if !g.tm.isInBounds(newPos) {
-		return false
+		return movementOutOfBounds
+	}
+	if g.tm.hasMovement(newPos, g.guard.dir) {
+		// fmt.Printf("Guard is in a loop at %v\n", newPos)
+		return movementLoop
 	}
 	if g.tm.hasObstacle(newPos) {
 		g.guard.dir = g.guard.dir.turnRight()
@@ -169,7 +192,7 @@ func (g *game) moveGuard() bool {
 	}
 	g.tm.setMovement(newPos, g.guard.dir)
 	g.guard.pos = newPos
-	return true
+	return movementOk
 }
 
 func createGameFromInput(f *os.File) game {
@@ -202,12 +225,95 @@ func createGameFromInput(f *os.File) game {
 	}
 }
 
-func Solver(f *os.File) error {
-	game := createGameFromInput(f)
-	fmt.Println(game.tm.String())
-	for game.moveGuard() {
+type part1Solver struct {
+	game game
+}
+
+func (s *part1Solver) Solve() error {
+	// fmt.Println(s.game.tm.String())
+	for {
+		result := s.game.moveGuard()
+		if result == movementOutOfBounds {
+			break
+		}
+		if result == movementLoop {
+			return fmt.Errorf("(part1) guard is in a loop at %v", s.game.guard.pos)
+		}
 	}
-	fmt.Println(game.tm.String())
-	fmt.Printf("Number of movement tiles: %d\n", game.tm.countMovementTiles())
+	// fmt.Println(s.game.tm.String())
+	fmt.Printf("Number of movement tiles: %d\n", s.game.tm.countMovementTiles())
 	return nil
+}
+
+func (s part1Solver) getMovementPositions() []position {
+	var positions []position
+	for y, row := range s.game.tm {
+		for x, tile := range row {
+			if tile != emptyTile && tile != obstacleTile {
+				positions = append(positions, position{x, y})
+			}
+		}
+	}
+	return positions
+}
+
+type part2Solver struct {
+	baseGame   game
+	candidates []position
+}
+
+func (s *part2Solver) Solve() error {
+	var results []position
+	startPos := s.baseGame.guard.pos
+	for _, candidate := range s.candidates {
+		if candidate == startPos {
+			continue
+		}
+		game := copyGame(s.baseGame)
+		game.tm.setObstacle(candidate)
+		for {
+			r := game.moveGuard()
+			if r == movementOutOfBounds {
+				break
+			}
+			if r == movementLoop {
+				// fmt.Println(game.tm.String())
+				results = append(results, candidate)
+				break
+			}
+		}
+	}
+	fmt.Printf("Number of loops: %d\n", len(results))
+	return nil
+}
+
+func copyGame(g game) game {
+	tm := make(tileMap, len(g.tm))
+	for y, row := range g.tm {
+		tm[y] = make([]tileStatus, len(row))
+		copy(tm[y], row)
+	}
+	return game{
+		tm: tm,
+		guard: player{
+			pos: g.guard.pos,
+			dir: g.guard.dir,
+		},
+	}
+}
+
+func Solver(f *os.File) error {
+	baseGame := createGameFromInput(f)
+	p1Solver := part1Solver{game: copyGame(baseGame)}
+	err := p1Solver.Solve()
+	if err != nil {
+		return err
+	}
+	candidates := p1Solver.getMovementPositions()
+	p2Solver := part2Solver{
+		baseGame:   copyGame(baseGame),
+		candidates: candidates,
+	}
+	return p2Solver.Solve()
+
 }

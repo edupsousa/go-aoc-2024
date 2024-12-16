@@ -33,7 +33,7 @@ func main() {
 	solverFn := getDaySolver(day)
 	err = solverFn(file)
 	if err != nil {
-		fmt.Println("Error solving day:", err)
+		fmt.Printf("Error solving day %d: %v\n", day, err)
 		os.Exit(1)
 	}
 }
