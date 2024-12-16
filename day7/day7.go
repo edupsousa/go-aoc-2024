@@ -41,11 +41,15 @@ func checkSolvable(parts []int, result int) bool {
 	}
 	sumParts := make([]int, len(parts)-1)
 	mulParts := make([]int, len(parts)-1)
+	concatParts := make([]int, len(parts)-1)
 	copy(sumParts, parts[1:])
 	copy(mulParts, parts[1:])
+	copy(concatParts, parts[1:])
 	sumParts[0] = parts[0] + parts[1]
 	mulParts[0] = parts[0] * parts[1]
-	return (sumParts[0] <= result && checkSolvable(sumParts, result)) || (mulParts[0] <= result && checkSolvable(mulParts, result))
+	concatParts[0], _ = strconv.Atoi(strconv.Itoa(parts[0]) + strconv.Itoa(parts[1]))
+	// fmt.Printf("Concating %d and %d gives %d\n", parts[0], parts[1], concatParts[0])
+	return (sumParts[0] <= result && checkSolvable(sumParts, result)) || (mulParts[0] <= result && checkSolvable(mulParts, result)) || (concatParts[0] <= result && checkSolvable(concatParts, result))
 }
 
 func parseEquation(line string) (equation, error) {
