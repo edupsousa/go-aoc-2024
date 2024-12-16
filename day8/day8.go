@@ -23,17 +23,17 @@ type line struct {
 	p1, p2 position
 }
 
-func (l line) getPointEquiDistantFromStart() position {
+func (l line) getPointEquiDistantFromStart(multiplier int) position {
 	return position{
-		l.p1.x + (l.p2.x-l.p1.x)*-1,
-		l.p1.y + (l.p2.y-l.p1.y)*-1,
+		l.p1.x + (l.p2.x-l.p1.x)*-float64(multiplier),
+		l.p1.y + (l.p2.y-l.p1.y)*-float64(multiplier),
 	}
 }
 
-func (l line) getPointEquiDistantFromEnd() position {
+func (l line) getPointEquiDistantFromEnd(multiplier int) position {
 	return position{
-		l.p2.x + (l.p1.x-l.p2.x)*-1,
-		l.p2.y + (l.p1.y-l.p2.y)*-1,
+		l.p2.x + (l.p1.x-l.p2.x)*-float64(multiplier),
+		l.p2.y + (l.p1.y-l.p2.y)*-float64(multiplier),
 	}
 }
 
@@ -50,12 +50,10 @@ func (am antennasMap) getAntinodes() (map[rune][]position, int) {
 		an[k] = make([]position, 0)
 		for i := 0; i < len(v)-1; i++ {
 			for j := i + 1; j < len(v); j++ {
-				ans := getAntinodes(v[i], v[j])
+				ans := getAntinodes(v[i], v[j], am.width, am.height)
 				for _, a := range ans {
-					if a.x >= 0 && a.x < float64(am.width) && a.y >= 0 && a.y < float64(am.height) {
-						an[k] = append(an[k], a)
-						posSet[a] = true
-					}
+					an[k] = append(an[k], a)
+					posSet[a] = true
 				}
 			}
 		}
@@ -63,11 +61,33 @@ func (am antennasMap) getAntinodes() (map[rune][]position, int) {
 	return an, len(posSet)
 }
 
-func getAntinodes(a position, b position) []position {
+func isInBounds(p position, w, h int) bool {
+	return p.x >= 0 && p.x < float64(w) && p.y >= 0 && p.y < float64(h)
+}
+
+func getAntinodes(a position, b position, w, h int) []position {
+	var ans []position
 	l := line{a, b}
-	an1 := l.getPointEquiDistantFromStart()
-	an2 := l.getPointEquiDistantFromEnd()
-	return []position{an1, an2}
+	i := 0
+	for {
+		p := l.getPointEquiDistantFromStart(i)
+		if !isInBounds(p, w, h) {
+			break
+		}
+		ans = append(ans, p)
+		i++
+	}
+	i = 0
+	for {
+		p := l.getPointEquiDistantFromEnd(i)
+		if !isInBounds(p, w, h) {
+			break
+		}
+		ans = append(ans, p)
+		i++
+	}
+
+	return ans
 }
 
 func parseInputMap(f *os.File) antennasMap {
